@@ -1,0 +1,48 @@
+CREATE TABLE patient1 (
+    id SERIAL PRIMARY KEY,
+    externalref JSONB,
+    name VARCHAR(255),
+    patientid VARCHAR(255),
+    tenantid VARCHAR(255)
+);
+
+
+
+select * from patient1;
+
+--For insertion
+
+insert into patient1 values(1,'{"emrid":1}','tr','patient1','tenantid1');
+
+--get data based on externalref
+
+select * from patient1 where externalref ->>'emrid'='1';
+
+
+CREATE OR REPLACE FUNCTION public.get_patient1(
+    _tenantid text,
+    _emrid integer
+)
+RETURNS TABLE(result json)
+LANGUAGE 'plpgsql'
+COST 100
+VOLATILE PARALLEL UNSAFE
+ROWS 1000
+AS $BODY$
+BEGIN
+    RETURN QUERY 
+    SELECT json_agg(res.*) as r 
+    FROM (
+        SELECT 
+            p.externalref,
+            p.name,
+            p.patientid,
+            p.tenantid
+        FROM
+            patient1 AS p
+        WHERE
+            p.tenantid = _tenantid
+            AND p.externalref ->> 'emrid' = CAST(_emrid AS text)
+    ) res;
+END;
+$BODY$;
